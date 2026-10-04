@@ -7,7 +7,7 @@ import logfire
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
-from app.config import settings
+from app.config import Settings
 from app.services.retrieval.embeddings import embed_texts, get_embedding_dim
 from app.ingestion.loaders.pdf import parse_pdf
 from app.ingestion.loaders.html import parse_html
@@ -21,8 +21,8 @@ PROCESSED_DATA_DIR = "processed_data"
 
 # Initialize Qdrant Client
 qdrant_client = QdrantClient(
-    url=settings.QDRANT_URL,
-    api_key=settings.QDRANT_API_KEY,
+    url=Settings.QDRANT_URL,
+    api_key=Settings.QDRANT_API_KEY,
 )
 
 def save_processed_locally(data: dict, source_type: str, filename: str)-> str:
@@ -87,7 +87,7 @@ def process_file(file_path: str, filename: str, source_type: str):
                 ]
 
                 qdrant_client.upsert(
-                    collection_name=settings.QDRANT_COLLECTION,
+                    collection_name=Settings.QDRANT_COLLECTION,
                     points=points,
                 )
                 logfire.info(f"Indexed {len(points)} points to Qdrant from {filename}.")
@@ -114,22 +114,22 @@ def run_universal_ingestion(base_dir: str, explicit_source_type: str = None, wip
         # Wipe collection if requested
         if wipe:
             with logfire.span("Wiping Collection"):
-                if qdrant_client.collection_exists(settings.QDRANT_COLLECTION):
-                    qdrant_client.delete_collection(settings.QDRANT_COLLECTION)
-                    logfire.info(f"Collection '{settings.QDRANT_COLLECTION}' deleted.")
+                if qdrant_client.collection_exists(Settings.QDRANT_COLLECTION):
+                    qdrant_client.delete_collection(Settings.QDRANT_COLLECTION)
+                    logfire.info(f"Collection '{Settings.QDRANT_COLLECTION}' deleted.")
 
         # Recreate collection — dimension resolved at runtime after embedding model probe
-        if not qdrant_client.collection_exists(settings.QDRANT_COLLECTION):
+        if not qdrant_client.collection_exists(Settings.QDRANT_COLLECTION):
             dim = get_embedding_dim()
             qdrant_client.create_collection(
-                collection_name=settings.QDRANT_COLLECTION,
+                collection_name=Settings.QDRANT_COLLECTION,
                 vectors_config=models.VectorParams(
                     size=dim,
                     distance=models.Distance.COSINE,
                 ),
             )
             logfire.info(
-                f"Created collection '{settings.QDRANT_COLLECTION}' "
+                f"Created collection '{Settings.QDRANT_COLLECTION}' "
                 f"({dim}-dim, Cosine)."
             )
 
