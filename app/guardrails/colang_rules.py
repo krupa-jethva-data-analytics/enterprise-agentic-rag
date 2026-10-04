@@ -140,24 +140,51 @@ rails:
 prompts:
   - task: self_check_input
     content: |
-      Decide whether the user's question should be blocked.
+      Determine whether the user's input is unrelated to the
+      Enterprise IT Assistant.
 
-      ALLOWED ENTERPRISE IT TOPICS:
+      ALLOWED TECHNICAL TOPICS:
+
+      Kubernetes:
       - Kubernetes
+      - Kubernetes deployment
+      - pods
+      - services
+      - containers
+
+      Intel hardware:
       - Intel hardware
       - Intel CPUs
+      - Intel processors
       - Intel FPGAs
       - Intel NICs
+      - Intel networking hardware
       - SRIOV
-      - Enterprise networking
+      - Intel server hardware
+
+      Enterprise networking:
+      - enterprise networking
       - SDN
       - VLAN
       - BGP
       - routing
+      - network configuration
 
-      CONVERSATION QUESTIONS ARE ALSO ALLOWED.
+      IMPORTANT:
+      Questions asking about Intel hardware in general are ALLOWED.
 
-      Examples of allowed conversation questions:
+      Examples of ALLOWED Intel questions:
+      - What is Intel hardware?
+      - What's Intel hardware?
+      - What are Intel CPUs?
+      - Tell me about Intel processors.
+      - What is an Intel FPGA?
+      - What are Intel NICs?
+      - Explain Intel networking hardware.
+
+      CONVERSATION QUESTIONS ARE ALLOWED.
+
+      Examples:
       - What was my previous question?
       - What did you just explain?
       - Can you explain that again?
@@ -165,18 +192,39 @@ prompts:
       - What was your previous answer?
       - Can you summarize our conversation?
 
-      If the user's question is NOT related to Enterprise IT
-      AND is NOT related to the current conversation,
-      return "Yes".
+      CASUAL CONVERSATION IS ALLOWED.
 
-      If the user's question is related to Enterprise IT
-      OR is related to the current conversation,
-      return "No".
+      Examples:
+      - hi
+      - hello
+      - hey
+      - thanks
+      - thank you
+      - thankyou
+      - okay
+      - got it
+      - goodbye
+      - bye
 
-      User question:
-      {{ user_input }}
+      DECISION RULE:
 
-      Answer only:
+      Return "No" if the input is:
+      - related to Kubernetes
+      - related to Intel hardware
+      - related to enterprise networking
+      - a conversation question
+      - a greeting or casual courtesy message
+
+      Return "Yes" ONLY if the input is clearly unrelated
+      to all of the above.
+
+      Examples of UNRELATED questions:
+      - How do I make coffee?
+      - Tell me a joke.
+      - What is the recipe for pizza?
+      - Who won the football match?
+
+      Answer ONLY:
       Yes
       or
       No

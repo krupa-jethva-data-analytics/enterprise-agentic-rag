@@ -82,6 +82,8 @@ def guard(message: str) -> tuple[bool, str | None]:
                 for action in rail.executed_actions:
 
                     decision = action.return_value.decision
+                    print("RAW DECISION:", repr(decision))
+                    print("DECISION TYPE:", type(decision))
 
                     print("INPUT RAIL DECISION:", decision)
 
