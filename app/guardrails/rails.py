@@ -76,26 +76,29 @@ def guard(message: str) -> tuple[bool, str | None]:
 
         # Check whether the input rail blocked the request
         for rail in activated_rails:
-
+            
             if rail.type == "input":
-
+                
                 for action in rail.executed_actions:
-
+                    print("\n========== ACTION DEBUG ==========")
+                    print("ACTION:", action)
+                    print("RETURN VALUE:", repr(action.return_value))
+                    print("RETURN TYPE:", type(action.return_value))
+                    
                     decision = action.return_value.decision
+                    
                     print("RAW DECISION:", repr(decision))
                     print("DECISION TYPE:", type(decision))
-
-                    print("INPUT RAIL DECISION:", decision)
-
+                    print("STRING DECISION:", str(decision))
+                    print("=================================")
+                    
                     if str(decision).lower().endswith("block"):
-
                         print("🛡️ GUARD FIRED: BLOCKED")
                         print("====================================")
-
-                        return (
-                            True,
-                            "I'm an Enterprise IT Assistant focused on Kubernetes, Intel hardware, and networking. I can't help with that — but ask me anything technical!"
-                        )
+                        
+                        return (True,
+                                "I'm an Enterprise IT Assistant focused on Kubernetes, Intel hardware, and networking. I can't help with that — but ask me anything technical!"
+                                )
 
         print("✅ GUARD PASSED")
         print("====================================")
