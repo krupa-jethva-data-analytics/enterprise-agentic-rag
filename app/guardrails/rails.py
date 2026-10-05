@@ -4,6 +4,12 @@ from langchain_groq import ChatGroq
 from nemoguardrails import RailsConfig, LLMRails
 
 from app.config import Settings
+from app.guardrails.colang_rules import COLANG_CONTENT, YAML_CONTENT, RAIL_INDICATORS
+
+
+
+
+
 from app.guardrails.colang_rules import (
     COLANG_CONTENT,
     YAML_CONTENT,
@@ -14,12 +20,16 @@ _rails: LLMRails | None = None
 
 
 def initialize_rails() -> None:
+    """
+    Build the NeMo LLMRails singleton at app startup.
+    Uses llama-3.1-8b-instant for fast intent classification at the gate —
+    the heavier llama-3.3-70b-versatile is reserved for the RAG pipeline.
+    """
     global _rails
 
-    # Separate model used only by NeMo Guardrails
     guard_llm = ChatGroq(
         api_key=Settings.GROQ_API_KEY,
-        model="openai/gpt-oss-20b",
+        model="llama-3.1-8b-instant",
         temperature=0
     )
 
@@ -28,79 +38,36 @@ def initialize_rails() -> None:
         yaml_content=YAML_CONTENT
     )
 
-    _rails = LLMRails(
-        config,
-        llm=guard_llm
-    )
-
-    logfire.info(
-        "🛡️ NeMo Guardrails initialised (openai/gpt-oss-20b)."
-    )
+    _rails = LLMRails(config, llm=guard_llm)
+    logfire.info("🛡️ NeMo Guardrails initialised (llama-3.1-8b-instant).")
+    
+    
 
 
 def guard(message: str) -> tuple[bool, str | None]:
+    """
+    Run a user message through the NeMo rails gate.
 
+    Returns:
+        (True,  rail_response) — a rail fired; return this response immediately,
+                                skip the RAG pipeline entirely.
+        (False, None)          — message is clean; proceed to LangGraph.
+    """
     if _rails is None:
-        logfire.warning(
-            "⚠️ Guardrails not initialised — skipping gate."
-        )
+        logfire.warning("⚠️ Guardrails not initialised — skipping gate.")
         return False, None
 
     with logfire.span("🛡️ Guardrails Check"):
+        result = _rails.generate(messages=[{"role": "user", "content": message}])
 
-        result = _rails.generate(
-            messages=[
-                {
-                    "role": "user",
-                    "content": message
-                }
-            ],
-            options={
-                "rails": ["input"],
-                "log": {
-                    "activated_rails": True
-                }
-            }
-        )
+        # NeMo returns {'role': 'assistant', 'content': '...'} — extract text
+        content = result.get("content", "") if isinstance(result, dict) else str(result)
 
-        print("\n========== GUARDRAIL DEBUG ==========")
-        print("USER INPUT:", message)
+        fired = any(indicator in content for indicator in RAIL_INDICATORS)
 
-        # Debug information
-        activated_rails = []
+        if fired:
+            logfire.info(f"🛡️ Guardrails fired | query='{message[:80]}'")
+            return True, content
 
-        if hasattr(result, "log") and result.log:
-            activated_rails = result.log.activated_rails or []
-
-        print("ACTIVATED RAILS:", activated_rails)
-
-        # Check whether the input rail blocked the request
-        for rail in activated_rails:
-            
-            if rail.type == "input":
-                
-                for action in rail.executed_actions:
-                    print("\n========== ACTION DEBUG ==========")
-                    print("ACTION:", action)
-                    print("RETURN VALUE:", repr(action.return_value))
-                    print("RETURN TYPE:", type(action.return_value))
-                    
-                    decision = action.return_value.decision
-                    
-                    print("RAW DECISION:", repr(decision))
-                    print("DECISION TYPE:", type(decision))
-                    print("STRING DECISION:", str(decision))
-                    print("=================================")
-                    
-                    if str(decision).lower().endswith("block"):
-                        print("🛡️ GUARD FIRED: BLOCKED")
-                        print("====================================")
-                        
-                        return (True,
-                                "I'm an Enterprise IT Assistant focused on Kubernetes, Intel hardware, and networking. I can't help with that — but ask me anything technical!"
-                                )
-
-        print("✅ GUARD PASSED")
-        print("====================================")
-
+        logfire.info("✅ Guardrails passed.")
         return False, None
